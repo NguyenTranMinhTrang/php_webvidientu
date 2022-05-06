@@ -23,7 +23,19 @@
         $result = executeResult($sql);
 
         if ($result != null && count($result) > 0) {
-            $_SESSION['user'] = $result[0];
+            $user = $result[0];
+            if ($user['username'] == 'admin') {
+                $user['access'] = array(
+                    
+                );
+            }
+            else {
+                $user['access'] = array(
+                    "home\.php$"
+                );
+            }
+            $_SESSION['user'] = $user;
+
             return $result[0];
         }
 
@@ -62,17 +74,17 @@
     }
 
     function checkUpload($email, $filename) {
-        $target_dir = "uploads/";
+        $target_dir = "C:/xampp/htdocs/cuoiki/server/uploads/";
         $target_file = $target_dir . basename($_FILES[$filename]["name"]);
+        echo $target_file;
         $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
 
-        if(isset($_POST["submit"])) {
-            $check = getimagesize($_FILES[$filename]["tmp_name"]);
-            if(!$check ) {
-                return array("code" => 0, "error" => "File is not an image.");
-            } 
-
-        }            
+    
+        $check = getimagesize($_FILES[$filename]["tmp_name"]);
+        if(!$check ) {
+            return array("code" => 0, "error" => "File is not an image.");
+        } 
+         
         if (file_exists($target_file)) {
             return array("code" => 0, "error" => "File already exists.");
         }
@@ -92,6 +104,14 @@
         else {
             return array("code" => 0, "error" => "Sorry, there was an error uploading your file.");
         }
+    }
+
+    function checkAccessPermission($uri = false) {
+        $uri = $uri != false ? $uri : $_SERVER['REQUEST_URI'];
+        $access = $_SESSION['user']['access'];
+        $access = implode("|", $access);
+        preg_match('/index.php\.php$|'.$access.'/', $uri, $matches);
+        return !empty($matches);
     }
 
 ?>

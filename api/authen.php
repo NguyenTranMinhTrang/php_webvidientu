@@ -1,6 +1,7 @@
 <?php
-    section_start();
+    session_start();
     require_once('../utils/utility.php');
+    require_once('../db/dbhelper.php');
 
     $action = getPost('action');
     switch ($action) {
@@ -76,11 +77,11 @@
         $timestamp = '';
         $character = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
         if (!empty($_POST)) {
-            $email = getPost($email);
-            $sdt = getPost($sdt);
-            $name = getPost($name);
-            $birthday = getPost($birthday);
-            $address = getPost($address);
+            $email = getPost('email');
+            $sdt = getPost('sdt');
+            $name = getPost('name');
+            $birthday = getPost('birthday');
+            $address = getPost('address');
 
             if (empty($email)) {
                 $error = 'Please enter your email';
@@ -100,29 +101,35 @@
             else if (empty($address)) {
                 $error = 'Please enter your address';
             }
-            else if (checkUpload($email, "front")['code'] == 0) {
-                $error = checkUpload($email, "front")['error'];
-            }
-            else if (checkUpload($email, "back")['code'] == 0) {
-                $error = checkUpload($email, "front")['error'];
-            }
             else {
-                $sql = "select * from users where email = '$email'";
-                $result = executeResult($sql, true);
-                if ($result == null || count($result) == 0) {
-                    $username = rand(1000000000,9999999999);
-                    $password = substr(str_shuffle($character), 0, 6);
-                    $hash = md5Security($password);
-                    $timestamp = strtotime($birthday); 
-                    $front = checkUpload($email, "front")['tmp'];
-                    $back = checkUpload($email, "back")['tmp'];
-                    $sql = "insert into users(email, name, username, password, sdt, birthday, address, front, back, state)
-                    values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '001')";
-                    execute($sql);
-                    $_SESSION['first_login'] = true;
+                $resultImageFront = checkUpload($email, "front");
+                if ($resultImageFront['code'] == 0) {
+                    $error = $resultImageFront['error'];
                 }
                 else {
-                    $error = 'User is already exist!';
+                    $resultImageBack = checkUpload($email, "back");
+                    if ($resultImageBack['code'] == 0) {
+                        $error = $resultImageBack['error'];
+                    }
+                    else {
+                        $sql = "select * from users where email = '$email'";
+                        $result = executeResult($sql, true);
+                        if ($result == null || count($result) == 0) {
+                            $username = rand(1000000000,9999999999);
+                            $password = substr(str_shuffle($character), 0, 6);
+                            $hash = md5Security($password);
+                            $timestamp = strtotime($birthday); 
+                            $front = $resultImageFront['tmp'];
+                            $back = $resultImageBack['tmp'];
+                            $sql = "insert into users(email, name, username, password, phone, birthday, address, front, back, idState)
+                            values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '01')";
+                            execute($sql);
+                            $_SESSION['first_login'] = true;
+                        }
+                        else {
+                            $error = 'User is already exist!';
+                        }
+                    }
                 } 
             }
 
