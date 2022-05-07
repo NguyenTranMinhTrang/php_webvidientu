@@ -12,66 +12,67 @@
             register();
             break;   
         case 'first_login':
-            register();
+            firstLogin();
             break;    
         default:
-            login();
             break;
     }
 
     function login() {
-        $username = getPost('username');
-        $password = getPost('password');
-        $res = [];
+        $error = "";
+        if ($_SESSION['first_login']) {
+            $error =  "You haven't activate your account!";
+        }
+        else {
+            $username = getPost('username');
+            $password = getPost('password');
+    
+            if (empty($username)) {
+                $error = "Please enter your username!";
+            }
+            else if (empty($password)) {
+                $error = "Please enter your password!";
+            }
+            else if (strlen($password) < 6) {
+                $error = "Password must have at least 6 characters!";
+            }
+            else {
+                $hashPass = md5Security($password);
 
-        if (empty($username)) {
-            $res = [
-                "code" => 0,
-                "msg"=> "Please enter your username!"
-            ];
+                $sql = "select * from users where username = '$username' and password = '$hashPass'";
+
+                $user = executeResult($sql, true);
+                if ($user != null) {
+                    $usernameUser =  $user['username'];
+                    $idUser =  $user['id'];
+                    $token = md5Security($usernameUser.time().$idUser);
+                    setcookie('token', $token, time() + 7*24*60*60, "/");
+                    $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
+                    execute($sql);
+                }
+                else {
+                    $error = "Invalid username/password";
+                }
+            }
         }
-        else if (empty($password)) {
+        
+        if (!empty($error)) {
             $res = [
                 "code" => 0,
-                "msg"=> "Please enter your password!"
-            ];
-        }
-        else if (strlen($password) < 6) {
-            $res = [
-                "code" => 0,
-                "msg"=> "Password must have at least 6 characters!"
+                "error" => $error
             ];
         }
         else {
-            $hashPass = md5Security($password);
-
-            $sql = "select * from users where username = '$username' and password = '$hashPass'";
-
-            $user = executeResult($sql, true);
-            if ($user != null) {
-                $usernameUser =  $user['username'];
-                $idUser =  $user['id'];
-                $token = md5Security($usernameUser.time().$idUser);
-                setcookie('token', $token, time() + 7*24*60*60, "/");
-                $sql = "insert into login_token (id_user, token) values ('$idUser', '$token')";
-                execute($sql);
-                $res = [
-                    "code" => 1,
-                    "msg"=> "Login success!"
-                ];
-            }
-            else {
-                $res = [
-                    "code" => 0,
-                    "error"=> "Invalid username/password"
-                ];
-            }
+            $res = [
+                "code" => 1,
+                "msg" => "Login success!"
+            ];
         }
-
         echo json_encode($res);
     }
 
     function register() {
+        $res ='';
         $error = '';
         $email = $sdt = $name = $birthday = $address  = $front = $back = '';
         $timestamp = '';
@@ -125,6 +126,11 @@
                             values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '01')";
                             execute($sql);
                             $_SESSION['first_login'] = true;
+                            $_SESSION['username'] = $username;
+                            $_SESSION['password'] = $password;
+                            if (!sendMail($email, $username, $password )) {
+                                $error = "Fall to send email to activate";
+                            }
                         }
                         else {
                             $error = 'User is already exist!';
@@ -150,29 +156,55 @@
     }
 
     function firstLogin() {
-        $username = getPost('username');
-        $newPass1 = getPost('newPass1');
-        $newPass2 = getPost('newPass2');
-
-        if ($newPass1 != $newPass2) {
-            return array('code' => 0, 'error' => "Confirm password incorrect!");
+        $error = '';
+        if ($_SESSION['first_login'] == false) {
+            
         }
-
-        $sql = "select * from users where username = '$username'";
-
-        $user = executeResult($sql, true);
-        if ($user != null) {
-            $id = $user['id'];
-            $sql = "UPDATE users SET password ='$newPass1' WHERE id = '$id'";
-            execute($sql);
-            $_SESSION['first_login'] = false;
-            // chuyen sang trang home
-            header( 'Location: index.php' ) ;
+        else if (!isset($_SESSION['username']) || !$_SESSION['password']) {
+            $error = "It's not the first time login";
         }
         else {
-            return array('code' => 0, 'error' => "User does not exist");
+            $username = $_SESSION['username'];
+            $password = $_SESSION['password'];
+            $hash = md5Security($password);
+            $newPass1 = getPost('newPass1');
+            $newPass2 = getPost('newPass2');
+            if ($newPass1 != $newPass2) {
+                $error = "Confirm password incorrect!";
+            }
+            else {
+                $sql = "select * from users where username = '$username' and password = '$hash'";
+    
+                $user = executeResult($sql, true);
+                if ($user != null) {
+                    $id = $user['id'];
+                    $hashPass = md5Security($newPass1);
+                    $sql = "UPDATE users SET password ='$hashPass' WHERE id = '$id'";
+                    execute($sql);
+                    $_SESSION['first_login'] = false;
+                    unset($_SESSION['username']);
+                    unset($_SESSION['password']);
+                }
+                else {
+                    $error= "User does not exist";
+                }
+            }
         }
 
+        if ($error == "") {
+            $res = [
+                "code" => 1,
+                "msg" => "Activate account success!"
+            ];
+        }
+        else {
+            $res = [
+                "code" => 0,
+                "error" => $error
+            ];
+        }
+
+        echo json_encode($res);
     }
 
     function logout() {
@@ -188,6 +220,7 @@
         execute($sql);
 
         setcookie('token', '', time() -  7*24*60*60, '/');
+        session_destroy();
         header('Location: login.php');
         die();
     }
