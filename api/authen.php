@@ -13,17 +13,20 @@
             break;   
         case 'first_login':
             firstLogin();
-            break;    
+            break;
+        case 'logout':
+            logout();
+            break;
+        case 'home':
+            authenToken();
         default:
             break;
     }
 
     function login() {
         $error = "";
-        if ($_SESSION['first_login']) {
-            $error =  "You haven't activate your account!";
-        }
-        else {
+        $code = 0;
+        
             $username = getPost('username');
             $password = getPost('password');
     
@@ -43,30 +46,47 @@
 
                 $user = executeResult($sql, true);
                 if ($user != null) {
-                    $usernameUser =  $user['username'];
-                    $idUser =  $user['id'];
-                    $token = md5Security($usernameUser.time().$idUser);
-                    setcookie('token', $token, time() + 7*24*60*60, "/");
-                    $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
-                    execute($sql);
+                    if ($user['idState'] == '00') {
+                        $_SESSION['first_login'] = true;
+                        $_SESSION['username'] = $username;
+                        $_SESSION['password'] = $password;
+                        $error =  "You haven't activate your account!";
+                        $code = 3;
+                    }
+                    else {
+                        $usernameUser =  $user['username'];
+                        $idUser =  $user['id'];
+                        $token = md5Security($usernameUser.time().$idUser);
+                        setcookie('token', $token, time() + 7*24*60*60, "/");
+                        $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
+                        execute($sql);
+                    }                   
                 }
                 else {
                     $error = "Invalid username/password";
                 }
             }
-        }
+        
         
         if (!empty($error)) {
             $res = [
-                "code" => 0,
+                "code" => $code,
                 "error" => $error
             ];
         }
         else {
-            $res = [
-                "code" => 1,
-                "msg" => "Login success!"
-            ];
+            if ($user['username'] == "admin") {
+                $res = [
+                    "code" => 2,
+                    "msg" => "Admin"
+                ];
+            }
+            else {
+                $res = [
+                    "code" => 1,
+                    "msg" => "Login success!"
+                ];
+            }
         }
         echo json_encode($res);
     }
@@ -123,7 +143,7 @@
                             $front = $resultImageFront['tmp'];
                             $back = $resultImageBack['tmp'];
                             $sql = "insert into users(email, name, username, password, phone, birthday, address, front, back, idState)
-                            values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '01')";
+                            values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '00')";
                             execute($sql);
                             $_SESSION['first_login'] = true;
                             $_SESSION['username'] = $username;
@@ -157,8 +177,8 @@
 
     function firstLogin() {
         $error = '';
-        if ($_SESSION['first_login'] == false) {
-            
+        if (!isset($_SESSION['first_login']) ) {
+            $error = "It's not the first time login";
         }
         else if (!isset($_SESSION['username']) || !$_SESSION['password']) {
             $error = "It's not the first time login";
@@ -179,11 +199,17 @@
                 if ($user != null) {
                     $id = $user['id'];
                     $hashPass = md5Security($newPass1);
-                    $sql = "UPDATE users SET password ='$hashPass' WHERE id = '$id'";
+                    $sql = "UPDATE users SET password ='$hashPass', idState= '01' WHERE id = '$id'";
                     execute($sql);
-                    $_SESSION['first_login'] = false;
+                    unset($_SESSION['first_login']);
                     unset($_SESSION['username']);
                     unset($_SESSION['password']);
+                    $usernameUser =  $user['username'];
+                    $idUser =  $id;
+                    $token = md5Security($usernameUser.time().$idUser);
+                    setcookie('token', $token, time() + 7*24*60*60, "/");
+                    $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
+                    execute($sql);
                 }
                 else {
                     $error= "User does not exist";
@@ -208,10 +234,13 @@
     }
 
     function logout() {
+        $res = [];
         $token = getCOOKIE('token');
         if (!empty($token)) {
-            header('Location: login.php');
-            die();
+            $res = [
+                "code" => 0, 
+                "msg" => "Can't not found user!"
+            ];
         }
 
         // xoa token khoi database
@@ -221,8 +250,59 @@
 
         setcookie('token', '', time() -  7*24*60*60, '/');
         session_destroy();
-        header('Location: login.php');
+        $res = [
+            "code" => 1, 
+            "msg" => "Log out success!"
+        ];
+        echo json_encode($res);
         die();
     }
+
+    function authenToken() {
+        
+        $token = getCOOKIE('token');
+
+        if (empty($token)) {
+            $res = [
+                "code" => 0,
+                "error" => "Can't not found user!"
+            ];
+        }
+        else {
+            $sql = "select users.* from users, login_tokens where users.id = login_tokens.id_user and 
+            login_tokens.token ='$token'";
+
+            $result = executeResult($sql);
+
+            if ($result != null && count($result) > 0) {
+                $user = $result[0];
+                if ($user['username'] == 'admin') {
+                    $user['access'] = array(
+                        
+                    );
+                }
+                else {
+                    $user['access'] = array(
+                        "home\.php$"
+                    );
+                }
+                
+                $res = [
+                    "code" => 1,
+                    "user" => $user
+                ]; 
+                
+            }
+            else {
+                $res = [
+                    "code" => 0,
+                    "error" => "Can't not found user!"
+                ];
+            }
+        }
+
+        echo json_encode($res);
+    }
+
 
 ?>

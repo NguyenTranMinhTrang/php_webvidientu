@@ -5,7 +5,6 @@
 
     require '../vendor/autoload.php';
     $mail = new PHPMailer(true);
-    print_r($mail);
 
     function fixSqlInjection($str) {
         $str = str_replace('\\', '\\\\', $str);
@@ -13,42 +12,7 @@
         return $str;
     }
 
-    function authenToken() {
-        if (isset($_SESSION['user'])) {
-            return $_SESSION['user'];
-        }
-
-        $token = getCOOKIE('token');
-
-        if (empty($token)) {
-            return null;
-        }
-
-        $sql = "select users.* from users, login_tokens where users.id = login_tokens.id and 
-        login_tokens.token ='$token'";
-
-        $result = executeResult($sql);
-
-        if ($result != null && count($result) > 0) {
-            $user = $result[0];
-            if ($user['username'] == 'admin') {
-                $user['access'] = array(
-                    
-                );
-            }
-            else {
-                $user['access'] = array(
-                    "home\.php$"
-                );
-            }
-            $_SESSION['user'] = $user;
-
-            return $result[0];
-        }
-
-        return null;
-    }
-
+    
     function getPost($key) {
         $value = '';
         if (isset($_POST[$key])) {
