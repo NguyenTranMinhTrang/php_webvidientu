@@ -4,70 +4,93 @@
     require_once('../db/dbhelper.php');
 
     $action = getPost('action');
+
     switch ($action) {
-        case 'login':
-            login();
+        case 'xacminh':
+            xacminh();
             break;
-        case 'register':
-            register();
-            break;   
-        case 'first_login':
-            firstLogin();
-            break;
-        case 'logout':
-            logout();
-            break;
-        case 'home':
-            authenToken();
+        
         default:
+            # code...
             break;
     }
 
-    function login() {
+    function xacminh() {
         $error = "";
-        $code = 0;
-        
-            $username = getPost('username');
-            $password = getPost('password');
-    
-            if (empty($username)) {
-                $error = "Please enter your username!";
-            }
-            else if (empty($password)) {
-                $error = "Please enter your password!";
-            }
-            else if (strlen($password) < 6) {
-                $error = "Password must have at least 6 characters!";
+        if (!isset($_POST['id'])) {
+            $error = "Tham số truyền không hợp lệ";
+        }
+        else {
+            $id = $_POST['id'];
+            $sql = "SELECT * FROM users WHERE id = '$id'";
+            $user = executeResult($sql, true);
+            if ($user) {
+                $sql = "UPDATE users SET idState= '02' WHERE id = '$id'";
+                execute($sql);
             }
             else {
-                $hashPass = md5Security($password);
+                $error = "User not found!";
+            }
 
-                $sql = "select * from users where username = '$username' and password = '$hashPass'";
+            if (empty($error)) {
+                $res = [
+                    'code' => 1,
+                    'msg' => "Xác minh thành công"
+                ];
+            }
+            else {
+                $res = [
+                    'code' => 0,
+                    'msg' => $error
+                ];
+            }
+        }
 
-                $user = executeResult($sql, true);
-                if ($user != null) {
-                    if ($user['idState'] == '00') {
-                        $_SESSION['first_login'] = true;
-                        $_SESSION['username'] = $username;
-                        $_SESSION['password'] = $password;
-                        $error =  "You haven't activate your account!";
-                        $code = 3;
+        echo json_encode($res);
+    }
+
+    function login($username, $password) {
+        $error = "";
+        $code = 0;
+    
+        if (empty($username)) {
+            $error = "Please enter your username!";
+        }
+        else if (empty($password)) {
+            $error = "Please enter your password!";
+        }
+        else if (strlen($password) < 6) {
+            $error = "Password must have at least 6 characters!";
+        }
+        else {
+            $hashPass = md5Security($password);
+
+            $sql = "select * from users where username = '$username' and password = '$hashPass'";
+
+            $user = executeResult($sql, true);
+            if ($user != null) {
+                    $usernameUser =  $user['username'];
+                    $idUser =  $user['id'];
+                    $token = md5Security($usernameUser.time().$idUser);
+                    setcookie('token', $token, time() + 7*24*60*60, "/");
+                    $_SESSION['id'] = $idUser;
+                    $_SESSION['username'] = $usernameUser;
+                    if ($usernameUser == "admin") {
+                        $code = 2;
+                        $_SESSION['chucvu'] = "admin";
                     }
                     else {
-                        $usernameUser =  $user['username'];
-                        $idUser =  $user['id'];
-                        $token = md5Security($usernameUser.time().$idUser);
-                        setcookie('token', $token, time() + 7*24*60*60, "/");
-                        $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
-                        execute($sql);
-                    }                   
-                }
-                else {
-                    $error = "Invalid username/password";
-                }
+                        $code = 1;
+                        $_SESSION['chucvu'] = "user";
+                    }
+                    $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
+                    execute($sql);
             }
-        
-        
+            else {
+                $error = "Invalid username/password";
+            }
+        }
+
         if (!empty($error)) {
             $res = [
                 "code" => $code,
@@ -75,145 +98,124 @@
             ];
         }
         else {
-            if ($user['username'] == "admin") {
-                $res = [
-                    "code" => 2,
-                    "msg" => "Admin"
-                ];
-            }
-            else {
-                $res = [
-                    "code" => 1,
-                    "msg" => "Login success!"
-                ];
-            }
+            $res = [
+                "code" => $code,
+                "msg" => "Login success!"
+            ];    
         }
-        echo json_encode($res);
+        
+        return $res;
     }
 
-    function register() {
+    function register($email , $sdt , $name , $birthday , $address) {
         $res ='';
         $error = '';
-        $email = $sdt = $name = $birthday = $address  = $front = $back = '';
+        $front = $back = '';
         $timestamp = '';
         $character = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        if (!empty($_POST)) {
-            $email = getPost('email');
-            $sdt = getPost('sdt');
-            $name = getPost('name');
-            $birthday = getPost('birthday');
-            $address = getPost('address');
 
-            if (empty($email)) {
-                $error = 'Please enter your email';
-            }
-            else if (filter_var($email, FILTER_VALIDATE_EMAIL) == false) {
-                $error = 'This is not a valid email address';
-            }
-            else if (empty($name)) {
-                $error = 'Please enter your name';
-            }
-            else if (empty($sdt)) {
-                $error = 'Please enter your phone number';
-            }
-            else if (empty($birthday)) {
-                $error = 'Please enter your birthday';
-            }
-            else if (empty($address)) {
-                $error = 'Please enter your address';
-            }
-            else {
-                $resultImageFront = checkUpload($email, "front");
-                if ($resultImageFront['code'] == 0) {
-                    $error = $resultImageFront['error'];
-                }
-                else {
-                    $resultImageBack = checkUpload($email, "back");
-                    if ($resultImageBack['code'] == 0) {
-                        $error = $resultImageBack['error'];
-                    }
-                    else {
-                        $sql = "select * from users where email = '$email'";
-                        $result = executeResult($sql, true);
-                        if ($result == null || count($result) == 0) {
-                            $username = rand(1000000000,9999999999);
-                            $password = substr(str_shuffle($character), 0, 6);
-                            $hash = md5Security($password);
-                            $timestamp = strtotime($birthday); 
-                            $front = $resultImageFront['tmp'];
-                            $back = $resultImageBack['tmp'];
-                            $sql = "insert into users(email, name, username, password, phone, birthday, address, front, back, idState)
-                            values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '00')";
-                            execute($sql);
-                            $_SESSION['first_login'] = true;
-                            $_SESSION['username'] = $username;
-                            $_SESSION['password'] = $password;
-                            if (!sendMail($email, $username, $password )) {
-                                $error = "Fall to send email to activate";
-                            }
-                        }
-                        else {
-                            $error = 'User is already exist!';
-                        }
-                    }
-                } 
-            }
-
-            if (!empty($error)) {
-                $res = [
-                    "code" => 0,
-                    "msg" => $error
-                ];
-            }
-            else {
-                $res = [
-                    "code" => 1,
-                    "msg" => "Register success!"
-                ];
-            }
-            echo json_encode($res); 
+        if (empty($email)) {
+            $error = 'Please enter your email';
         }
-    }
-
-    function firstLogin() {
-        $error = '';
-        if (!isset($_SESSION['first_login']) ) {
-            $error = "It's not the first time login";
+        else if (filter_var($email, FILTER_VALIDATE_EMAIL) == false) {
+            $error = 'This is not a valid email address';
         }
-        else if (!isset($_SESSION['username']) || !$_SESSION['password']) {
-            $error = "It's not the first time login";
+        else if (empty($name)) {
+            $error = 'Please enter your name';
+        }
+        else if (empty($sdt)) {
+            $error = 'Please enter your phone number';
+        }
+        else if (empty($birthday)) {
+            $error = 'Please enter your birthday';
+        }
+        else if (empty($address)) {
+            $error = 'Please enter your address';
         }
         else {
-            $username = $_SESSION['username'];
-            $password = $_SESSION['password'];
-            $hash = md5Security($password);
-            $newPass1 = getPost('newPass1');
-            $newPass2 = getPost('newPass2');
-            if ($newPass1 != $newPass2) {
-                $error = "Confirm password incorrect!";
+            $resultImageFront = checkUpload($email, "front");
+            if ($resultImageFront['code'] == 0) {
+                $error = $resultImageFront['error'];
             }
             else {
-                $sql = "select * from users where username = '$username' and password = '$hash'";
-    
-                $user = executeResult($sql, true);
-                if ($user != null) {
-                    $id = $user['id'];
-                    $hashPass = md5Security($newPass1);
-                    $sql = "UPDATE users SET password ='$hashPass', idState= '01' WHERE id = '$id'";
-                    execute($sql);
-                    unset($_SESSION['first_login']);
-                    unset($_SESSION['username']);
-                    unset($_SESSION['password']);
-                    $usernameUser =  $user['username'];
-                    $idUser =  $id;
-                    $token = md5Security($usernameUser.time().$idUser);
-                    setcookie('token', $token, time() + 7*24*60*60, "/");
-                    $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
-                    execute($sql);
+                $resultImageBack = checkUpload($email, "back");
+                if ($resultImageBack['code'] == 0) {
+                    $error = $resultImageBack['error'];
                 }
                 else {
-                    $error= "User does not exist";
+                    $sql = "select * from users where email = '$email'";
+                    $result = executeResult($sql, true);
+                    if ($result == null || count($result) == 0) {
+                        $username = rand(1000000000,9999999999);
+                        $password = substr(str_shuffle($character), 0, 6);
+                        $hash = md5Security($password);
+                        $timestamp = strtotime($birthday); 
+                        $front = $resultImageFront['tmp'];
+                        $back = $resultImageBack['tmp'];
+                        $createAt = date('Y-m-d H:i:s');
+                        $sql = "insert into users(email, name, username, password, phone, birthday, address, front, back, idState, createAT)
+                        values ('$email', '$name', '$username', '$hash', '$sdt', '$timestamp', '$address', '$front', '$back', '00', '$createAt')";
+                        execute($sql);
+                        $sql = "SELECT * FROM users WHERE username = '$username' AND  password = '$hash'";
+                        $user = executeResult($sql, true);
+                        if ($user) {
+                            $_SESSION['id'] = $user['id'];
+                            $_SESSION['first'] = true;
+                        }
+                        if (!sendMail($email, $username, $password )) {
+                            $error = "Fall to send email to activate";
+                        }
+                    }
+                    else {
+                        $error = 'User is already exist!';
+                    }
                 }
+            } 
+        }
+
+        if (!empty($error)) {
+            $res = [
+                "code" => 0,
+                "error" => $error
+            ];
+        }
+        else {
+            $res = [
+                "code" => 1,
+                "msg" => "Register success!"
+            ];
+        }
+           
+        return $res;
+    }
+
+    function firstLogin($newPass1, $newPass2) {
+        $error = '';
+
+        $id = $_SESSION['id'];
+            
+        if ($newPass1 != $newPass2) {
+            $error = "Confirm password incorrect!";
+        }
+        else {
+            $sql = "SELECT * FROM users WHERE id = $id";
+
+            $user = executeResult($sql, true);
+            if ($user != null) {
+                $hashPass = md5Security($newPass1);
+                $sql = "UPDATE users SET password ='$hashPass', idState= '01' WHERE id = '$id'";
+                execute($sql);
+                $usernameUser =  $user['username'];
+                $_SESSION['username'] = $usernameUser;
+                $_SESSION['chucvu'] = 'user';
+                unset($_SESSION['first']);
+                $token = md5Security($usernameUser.time().$id);
+                setcookie('token', $token, time() + 7*24*60*60, "/");
+                $sql = "insert into login_tokens (id_user, token) values ('$id', '$token')";
+                execute($sql);
+            }
+            else {
+                $error= "User does not exist";
             }
         }
 
@@ -230,7 +232,7 @@
             ];
         }
 
-        echo json_encode($res);
+        return $res;
     }
 
     function logout() {
@@ -239,7 +241,7 @@
         if (!empty($token)) {
             $res = [
                 "code" => 0, 
-                "msg" => "Can't not found user!"
+                "error" => "Can't not found user!"
             ];
         }
 
@@ -254,7 +256,7 @@
             "code" => 1, 
             "msg" => "Log out success!"
         ];
-        echo json_encode($res);
+        return $res;
         die();
     }
 

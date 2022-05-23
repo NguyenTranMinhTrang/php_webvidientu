@@ -45,8 +45,15 @@
     }
 
     function checkUpload($email, $filename) {
+        if ($_FILES[$filename]["name"] == "" && $_FILES[$filename]["full_path"] == "" && $_FILES[$filename]["tmp_name"] == "") {
+            return array("code" => 0, "error" => "You haven't choosen image yet!");
+        }
+        
         $target_dir = "C:/xampp/htdocs/cuoiki/server/uploads/";
-        $target_file = $target_dir . basename($_FILES[$filename]["name"]);
+        $nameEmail = str_replace('.', '_', $email);
+        $target_dir = $target_dir . $nameEmail;
+        mkdir($target_dir);
+        $target_file = $target_dir . '/' . basename($_FILES[$filename]["name"]);
         $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
 
     
@@ -68,7 +75,7 @@
         }
 
         if (move_uploaded_file($_FILES[$filename]["tmp_name"], $target_file)) {
-            return array("code" => 1, "tmp" => $_FILES[$filename]["tmp_name"] );
+            return array("code" => 1, "tmp" => $nameEmail. '/' . basename($_FILES[$filename]["name"]));
 
         }
         else {
