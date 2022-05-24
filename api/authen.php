@@ -3,51 +3,6 @@
     require_once('../utils/utility.php');
     require_once('../db/dbhelper.php');
 
-    $action = getPost('action');
-
-    switch ($action) {
-        case 'xacminh':
-            xacminh();
-            break;
-        
-        default:
-            # code...
-            break;
-    }
-
-    function xacminh() {
-        $error = "";
-        if (!isset($_POST['id'])) {
-            $error = "Tham số truyền không hợp lệ";
-        }
-        else {
-            $id = $_POST['id'];
-            $sql = "SELECT * FROM users WHERE id = '$id'";
-            $user = executeResult($sql, true);
-            if ($user) {
-                $sql = "UPDATE users SET idState= '02' WHERE id = '$id'";
-                execute($sql);
-            }
-            else {
-                $error = "User not found!";
-            }
-
-            if (empty($error)) {
-                $res = [
-                    'code' => 1,
-                    'msg' => "Xác minh thành công"
-                ];
-            }
-            else {
-                $res = [
-                    'code' => 0,
-                    'msg' => $error
-                ];
-            }
-        }
-
-        echo json_encode($res);
-    }
 
     function login($username, $password) {
         $error = "";
@@ -71,22 +26,40 @@
             if ($user != null) {
                     $usernameUser =  $user['username'];
                     $idUser =  $user['id'];
+                    $state = $user['idState'];
                     $token = md5Security($usernameUser.time().$idUser);
                     setcookie('token', $token, time() + 7*24*60*60, "/");
                     $_SESSION['id'] = $idUser;
                     $_SESSION['username'] = $usernameUser;
+                    $_SESSION['email'] = $user['email'];
+
+                    $sql = "SELECT * FROM times_login WHERE id = '$idUser'";
+                    $data = executeResult($sql, true);
+                    if ($data != null) {
+                        if ($data['times'] >= 3 ) {
+                            $oldState = $data['oldState'];
+                            $sql = "UPDATE users SET idState = '$oldState'";
+                            execute($sql);
+                        }
+                        $sql = "DELETE FROM times_login WHERE id = '$idUser'";
+                        execute($sql);
+                    }
+
                     if ($usernameUser == "admin") {
                         $code = 2;
+                        $_SESSION['state'] = "05";
                         $_SESSION['chucvu'] = "admin";
                     }
                     else {
                         $code = 1;
+                        $_SESSION['state'] = $state;
                         $_SESSION['chucvu'] = "user";
                     }
                     $sql = "insert into login_tokens (id_user, token) values ('$idUser', '$token')";
                     execute($sql);
             }
             else {
+                $code = 2;
                 $error = "Invalid username/password";
             }
         }
@@ -304,6 +277,42 @@
         }
 
         echo json_encode($res);
+    }
+
+    function loginWrong($username) {
+        $sql = "SELECT * FROM users WHERE username = '$username'";
+        $user = executeResult($sql, true);
+        if ($user) {
+            $id = $user['id'];
+            $sql = "SELECT * FROM times_login WHERE id = '$id'";
+            $data = executeResult($sql, true);
+            if ($data == null) {
+                $sql = "INSERT INTO times_login(id, times)  VALUES('$id', 1)";
+                execute($sql);
+                return 1;
+            }
+            else {
+                if ($data['times'] == 2) {
+                    $oldState = $user['idState'];
+                    $sql = "UPDATE users SET idState = '07' WHERE id = '$id'";
+                    execute($sql);
+                    setcookie('login', true, time() + 60, "/");
+                    $timeLogin = "UPDATE times_login SET times = times + 1, oldState = '$oldState' WHERE id = '$id'";
+                }
+                else if ($data['times'] == 5) {
+                    $timelock = date('Y-m-d H:i:s');
+                    $sql = "UPDATE users SET idState = '03' WHERE id = '$id'";
+                    execute($sql);
+                    $timeLogin = "UPDATE times_login SET times = times + 1, datelock = '$timelock' WHERE id = '$id'";
+                }
+                else {
+                    $timeLogin = "UPDATE times_login SET times = times + 1 WHERE id = '$id'";
+                }
+                execute($timeLogin);
+            }
+
+            return $data['times'] + 1;
+        }
     }
 
 

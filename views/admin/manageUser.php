@@ -27,12 +27,12 @@
             <th scope="col">CMND Mặt Sau</th>
             <th scope="col">Xác Minh</th>
             <th scope="col">Vô Hiệu Hóa</th>
+            <th scope="col">Yêu cầu bổ sung thông tin</th>
             </tr>
         </thead>
         <tbody>
-            <img  src="" alt="" style={{}}>
             <?php
-                $sql = "SELECT * FROM users WHERE idState = '01' ORDER BY createAT DESC";
+                $sql = "SELECT * FROM users WHERE idState != '02' and idState != '05'  ORDER BY createAT DESC";
                 $listUser = executeResult($sql);
                 $index = 1;
                 if ($listUser) {
@@ -46,7 +46,12 @@
                                 <td>
                                     <button onclick="xacminh(' . $user['id'] . ')">Xác Minh</button>
                                 </td>
-                                <td>Vô Hiệu Hóa</td>
+                                <td>
+                                    <button onclick="huy(' . $user['id'] . ')">Hủy</button>
+                                </td>
+                                <td>
+                                    <button onclick="bosung(' . $user['id'] . ')">Bổ Sung</button>
+                                </td>
                             </tr> ';
                     }
                 }

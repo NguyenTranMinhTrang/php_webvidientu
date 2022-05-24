@@ -8,13 +8,30 @@
 
     $error = '';
 
-    if (isset($_POST['username']) && isset($_POST['password'])) {
-        $username = $_POST['username'];
-        $password = $_POST['password'];
-
-        $data = login($username, $password);
-        if ($data['code'] == 0) {
-            $error = $data['error'];
+    if (isset($_COOKIE['login'])) {
+        $error = "Your account have been lock now. Try again after 1 minutes";
+    }
+    else {
+        if (isset($_POST['username']) && isset($_POST['password'])) {
+            $username = $_POST['username'];
+            $password = $_POST['password'];
+    
+            $data = login($username, $password);
+            if ($data['code'] != 1) {
+                $error = $data['error'];
+                if ($data['code'] == 2) {
+                    if ($username != "admin") {
+                        $times = loginwrong($username);
+                        if ($times == 6) {
+                            $error = "Your account have been lock";
+                        }
+                    }
+                }
+            }
+            else {
+                header('Location: index.php');
+                exit();
+            }
         }
     }
 
@@ -93,4 +110,5 @@
             </div>
         </div>
     </div>
+    <script src="./main.js"></script>
 </body>
