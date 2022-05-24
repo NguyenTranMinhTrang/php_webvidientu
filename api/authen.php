@@ -1,7 +1,42 @@
 <?php
     session_start();
-    require_once('./utils/utility.php');
-    require_once('./db/dbhelper.php');
+    require_once dirname( __DIR__ ) . '/utils/utility.php';
+    require_once dirname( __DIR__ ) . '/db/dbhelper.php';
+
+
+    function changepassword($email, $newPass1, $newPass2) {
+        $error = "";
+
+        if (empty($newPass1)) {
+            $error = "Missing Input";
+        }
+        else if (empty($newPass2)) {
+            $error = "Missing Input";
+        }
+        else if ($newPass1 != $newPass2) {
+            $error = "Confirm password must be the same";
+        }
+        else {
+            $hass = md5Security($newPass1);
+            $sql = "UPDATE users SET password = '$hass' WHERE email = '$email'";
+            execute($sql);
+        }
+
+        if (!empty($error)) {
+            $res = [
+                'code' => 1,
+                'msg' => "Success"
+            ];
+        }
+        else {
+            $res = [
+                'code' => 1,
+                'error' => $error
+            ];
+        }
+
+        return $res;
+    }
 
 
     function login($username, $password) {

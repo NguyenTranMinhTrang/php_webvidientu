@@ -3,8 +3,8 @@
     use PHPMailer\PHPMailer\SMTP;
     use PHPMailer\PHPMailer\Exception;
 
+    require_once dirname( __DIR__ ) . '/vendor/autoload.php';
     
-
     function fixSqlInjection($str) {
         $str = str_replace('\\', '\\\\', $str);
         $str = str_replace('\'', '\\\'', $str);
@@ -133,7 +133,6 @@
     }
 
     function sendMail($email, $username, $password) {
-        require './vendor/autoload.php';
         
         $mail = new PHPMailer(true);
         try {
@@ -162,6 +161,35 @@
             $mail->isHTML(true);                                  //Set email format to HTML
             $mail->Subject = 'Activate your account';
             $mail->Body    = "Username: '$username', Password: '$password'";
+            $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
+        
+            $mail->send();
+            return true;
+        } catch (Exception $e) {
+            return false;
+        }
+    }
+
+    function sendOTP($email, $OTP) {
+        $mail = new PHPMailer(true);
+        try {
+
+            $mail->SMTPDebug = 0;             
+            $mail->isSMTP();                                           
+            $mail->Host       = 'smtp.gmail.com';                   
+            $mail->SMTPAuth   = true;                                  
+            $mail->Username   = 'minhtrang.9096@gmail.com';              
+            $mail->Password   = 'fmtpnsolagvyaguo';                            
+            $mail->SMTPSecure = 'tls';       
+            $mail->Port       = 587;                                   
+        
+
+            $mail->setFrom('minhtrang.9096@gmail.com', 'Mailer');
+            $mail->addAddress($email, 'User');     
+        
+            $mail->isHTML(true);                           
+            $mail->Subject = 'Verify OTP code to transfer money';
+            $mail->Body    = "Here is your OTP code: $OTP";
             $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
         
             $mail->send();
