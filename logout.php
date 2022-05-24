@@ -1,5 +1,5 @@
 <?php
-    require_once ('../api/authen.php');
+    require_once ('./api/authen.php');
 
     $data = logout();
     if ($data) {

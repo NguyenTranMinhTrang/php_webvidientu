@@ -11,7 +11,7 @@
         exit();
     }
 
-    require_once('../../db/dbhelper.php');
+    require_once('../db/dbhelper.php');
     include ('../header.php');
 ?>
 
@@ -41,8 +41,8 @@
                                 <th scope="row">' . ($index++) . '</th>
                                 <td>' . $user['email'] . '</td>
                                 <td>' . $user['username'] . '</td>
-                                <td><img width="100" height="100" src="../../uploads/' .$user['front']. '"/></td>
-                                <td><img width="100" height="100" src="../../uploads/' .$user['back']. '"/></td>
+                                <td><img width="100" height="100" src="../uploads/' .$user['front']. '"/></td>
+                                <td><img width="100" height="100" src="../uploads/' .$user['back']. '"/></td>
                                 <td>
                                     <button onclick="xacminh(' . $user['id'] . ')">Xác Minh</button>
                                 </td>

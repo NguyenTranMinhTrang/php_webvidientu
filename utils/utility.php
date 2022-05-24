@@ -3,8 +3,7 @@
     use PHPMailer\PHPMailer\SMTP;
     use PHPMailer\PHPMailer\Exception;
 
-    require '../vendor/autoload.php';
-    $mail = new PHPMailer(true);
+    
 
     function fixSqlInjection($str) {
         $str = str_replace('\\', '\\\\', $str);
@@ -92,6 +91,8 @@
     }
 
     function sendMail($email, $username, $password) {
+        require './vendor/autoload.php';
+        
         $mail = new PHPMailer(true);
         try {
             //Server settings

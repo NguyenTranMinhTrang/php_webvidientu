@@ -6,7 +6,7 @@
         exit();
     }
 
-    require_once('../db/dbhelper.php');
+    require_once('./db/dbhelper.php');
     $id = $_SESSION['id'];
     $sql = "SELECT * FROM users WHERE id = $id";
     $user = executeResult($sql, true);

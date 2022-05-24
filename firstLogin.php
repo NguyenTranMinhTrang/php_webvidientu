@@ -1,5 +1,5 @@
 <?php
-    require_once ('../api/authen.php');
+    require_once ('./api/authen.php');
 
     if (!isset($_SESSION['id'])) {
         header('Location: login.php');

@@ -1,7 +1,7 @@
 <?php
     session_start();
-    require_once('../utils/utility.php');
-    require_once('../db/dbhelper.php');
+    require_once('./utils/utility.php');
+    require_once('./db/dbhelper.php');
 
 
     function login($username, $password) {
@@ -46,7 +46,7 @@
                     }
 
                     if ($usernameUser == "admin") {
-                        $code = 2;
+                        $code = 1;
                         $_SESSION['state'] = "05";
                         $_SESSION['chucvu'] = "admin";
                     }

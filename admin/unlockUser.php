@@ -11,7 +11,7 @@
         exit();
     }
 
-    require_once('../../db/dbhelper.php');
+    require_once('../db/dbhelper.php');
     include ('../header.php');
 ?>
 
