@@ -15,33 +15,20 @@
     $error = "";
 
     if (isset($_POST['upload']) ) {
-        $filePath = $_SERVER['DOCUMENT_ROOT'];
         $id = $_SESSION['id'];
         $sql = "SELECT * FROM users WHERE id = '$id'";
         $user = executeResult($sql, true);
+        $email = $user['email'];
+        $front = $user['front'];
+        $back = $user['back'];
+
         if ($user) {
-            $front = $filePath . '/cuoiki/server/uploads/' . $user['front'];
-            $back =  $filePath . '/cuoiki/server/uploads/' . $user['back'];
-            echo $front;
-            echo $back;
-            if (file_exists($front)) {
-                unlink($front);
-            }
-            if (file_exists($back)) {
-                unlink($back);
-            }
-            $dir = $filePath . '/cuoiki/server/uploads/' . str_replace('.', '_', $user['email']);
-            if (file_exists($dir)) {
-                rmdir($dir);
-            }
-            
-            $email = $user['email'];
-            $resultImageFront = checkUpload($email, "front");
+            $resultImageFront = uploadAgain($email, "front", $front);
             if ($resultImageFront['code'] == 0) {
                 $error = $resultImageFront['error'];
             }
             else {
-                $resultImageBack = checkUpload($email, "back");
+                $resultImageBack = uploadAgain($email, "back", $back);
                 if ($resultImageBack['code'] == 0) {
                     $error = $resultImageBack['error'];
                 }
@@ -55,7 +42,6 @@
                 }
             }
         }
-
     }
     include ('../header.php');
 ?>

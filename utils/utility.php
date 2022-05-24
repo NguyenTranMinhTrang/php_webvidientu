@@ -82,6 +82,48 @@
         }
     }
 
+    function uploadAgain($email, $filename, $url) {
+        if ($_FILES[$filename]["name"] == "" && $_FILES[$filename]["full_path"] == "" && $_FILES[$filename]["tmp_name"] == "") {
+            return array("code" => 0, "error" => "You haven't choosen image yet!");
+        }
+
+        $target_dir = "C:/xampp/htdocs/cuoiki/server/uploads/";
+        
+
+        $nameEmail = str_replace('.', '_', $email);
+        $dir = $target_dir . $nameEmail;
+        $target_file = $dir . '/' . basename($_FILES[$filename]["name"]);
+        $imageFileType = strtolower(pathinfo($target_file,PATHINFO_EXTENSION));
+
+        $check = getimagesize($_FILES[$filename]["tmp_name"]);
+        if(!$check ) {
+            return array("code" => 0, "error" => "File is not an image.");
+        }
+
+        if ($_FILES[$filename]["size"] > 500000) {
+            return array("code" => 0, "error" => "File is too large.");
+        }
+
+        if($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg" && $imageFileType != "gif" ) {
+            return array("code" => 0, "error" => "Only JPG, JPEG, PNG & GIF files are allowed.");
+        }
+
+        
+        $oldFile = $target_dir . $url;
+        if (file_exists($oldFile)) {
+            unlink($oldFile);
+        }
+
+        if (move_uploaded_file($_FILES[$filename]["tmp_name"], $target_file)) {
+            return array("code" => 1, "tmp" => $nameEmail. '/' . basename($_FILES[$filename]["name"]));
+
+        }
+        else {
+            return array("code" => 0, "error" => "Sorry, there was an error uploading your file.");
+        }
+
+    }
+
     function checkAccessPermission($uri = false) {
         $uri = $uri != false ? $uri : $_SERVER['REQUEST_URI'];
         $access = $_SESSION['user']['access'];
